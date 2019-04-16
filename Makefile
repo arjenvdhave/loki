@@ -61,8 +61,7 @@ pkg/logproto/logproto.pb.go: pkg/logproto/logproto.proto
 vendor/github.com/cortexproject/cortex/pkg/ring/ring.pb.go: vendor/github.com/cortexproject/cortex/pkg/ring/ring.proto
 vendor/github.com/cortexproject/cortex/pkg/ingester/client/cortex.pb.go: vendor/github.com/cortexproject/cortex/pkg/ingester/client/cortex.proto
 vendor/github.com/cortexproject/cortex/pkg/chunk/storage/caching_index_client.pb.go: vendor/github.com/cortexproject/cortex/pkg/chunk/storage/caching_index_client.proto
-pkg/parser/labels.go: pkg/parser/labels.y
-pkg/parser/matchers.go: pkg/parser/matchers.y
+pkg/logql/expr.go: pkg/logql/expr.y
 all: $(UPTODATE_FILES)
 test: $(PROTO_GOS) $(YACC_GOS)
 yacc: $(YACC_GOS)

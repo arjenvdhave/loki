@@ -4,6 +4,8 @@ import (
 	"context"
 	"sort"
 
+	"github.com/prometheus/prometheus/promql"
+
 	"github.com/cortexproject/cortex/pkg/chunk"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/pkg/labels"
@@ -11,11 +13,10 @@ import (
 	"github.com/grafana/loki/pkg/chunkenc"
 	"github.com/grafana/loki/pkg/iter"
 	"github.com/grafana/loki/pkg/logproto"
-	"github.com/grafana/loki/pkg/parser"
 )
 
 func (q Querier) queryStore(ctx context.Context, req *logproto.QueryRequest) ([]iter.EntryIterator, error) {
-	matchers, err := parser.Matchers(req.Query)
+	matchers, err := promql.ParseMetricSelector(req.Query)
 	if err != nil {
 		return nil, err
 	}
