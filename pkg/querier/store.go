@@ -4,8 +4,6 @@ import (
 	"context"
 	"sort"
 
-	"github.com/prometheus/prometheus/promql"
-
 	"github.com/cortexproject/cortex/pkg/chunk"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/pkg/labels"
@@ -13,27 +11,48 @@ import (
 	"github.com/grafana/loki/pkg/chunkenc"
 	"github.com/grafana/loki/pkg/iter"
 	"github.com/grafana/loki/pkg/logproto"
+	"github.com/grafana/loki/pkg/logql"
 )
 
-func (q Querier) queryStore(ctx context.Context, req *logproto.QueryRequest) ([]iter.EntryIterator, error) {
-	matchers, err := promql.ParseMetricSelector(req.Query)
+type querier struct {
+	q   *Querier
+	req *logproto.QueryRequest
+}
+
+type QuerierFunc func([]*labels.Matcher) (iter.EntryIterator, error)
+
+func (q QuerierFunc) Query(ms []*labels.Matcher) (iter.EntryIterator, error) {
+	return q(ms)
+}
+
+func (q Querier) queryStore(ctx context.Context, req *logproto.QueryRequest) (iter.EntryIterator, error) {
+	query, err := logql.ParseExpr(req.Query)
 	if err != nil {
 		return nil, err
 	}
 
-	nameLabelMatcher, err := labels.NewMatcher(labels.MatchEqual, labels.MetricName, "logs")
-	if err != nil {
-		return nil, err
-	}
+	querier := QuerierFunc(func(matchers []*labels.Matcher) (iter.EntryIterator, error) {
+		nameLabelMatcher, err := labels.NewMatcher(labels.MatchEqual, labels.MetricName, "logs")
+		if err != nil {
+			return nil, err
+		}
 
-	matchers = append(matchers, nameLabelMatcher)
-	from, through := model.TimeFromUnixNano(req.Start.UnixNano()), model.TimeFromUnixNano(req.End.UnixNano())
-	chunks, err := q.store.Get(ctx, from, through, matchers...)
-	if err != nil {
-		return nil, err
-	}
+		matchers = append(matchers, nameLabelMatcher)
+		from, through := model.TimeFromUnixNano(req.Start.UnixNano()), model.TimeFromUnixNano(req.End.UnixNano())
+		chunks, err := q.store.Get(ctx, from, through, matchers...)
+		if err != nil {
+			return nil, err
+		}
 
-	return partitionBySeriesChunks(req, chunks)
+		iters, err := partitionBySeriesChunks(req, chunks)
+		if err != nil {
+			return nil, err
+		}
+
+		return iter.NewHeapIterator(iters, req.Direction), nil
+	})
+
+	return query.Eval(querier)
 }
 
 func partitionBySeriesChunks(req *logproto.QueryRequest, chunks []chunk.Chunk) ([]iter.EntryIterator, error) {
