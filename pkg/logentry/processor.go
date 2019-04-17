@@ -5,8 +5,6 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/prometheus/common/model"
-
-	"github.com/grafana/loki/pkg/parser/entry/parsers"
 )
 
 // Parser takes an existing set of labels, timestamp and log entry and returns either a possibly mutated
@@ -45,7 +43,7 @@ func NewProcessor(config Config) (Processor, error) {
 
 		switch s {
 		case "regex":
-			var cfg2 parsers.Config
+			var cfg2 Config
 			err := mapstructure.Decode(rg, &cfg2)
 			if err != nil {
 				panic(err)
